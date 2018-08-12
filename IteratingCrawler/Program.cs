@@ -144,9 +144,9 @@ namespace IteratingCrawler
                 }
             }
 
-            for (int i = options.Start; i <= options.End; i++)
+            for (int i = options.Start; i != options.End; i += (i < options.End) ? 1 : -1)
             {
-                if (i >= fileList.Count || (Uri.TryCreate(fileList[i], UriKind.Absolute, out Uri entry) ? options.RetryValid : options.RetryInvalid))
+                if (!fileList.ContainsKey(i) || (Uri.TryCreate(fileList[i], UriKind.Absolute, out Uri entry) ? options.RetryValid : options.RetryInvalid))
                 {
                     Uri uri = new Uri(options.Url + i);
                     CrawlResult rawResult;
