@@ -15,10 +15,19 @@ namespace IteratingCrawler
 {
     class Program
     {
+        enum ValidationModes
+        {
+            Redirect,
+            Valid
+        }
+
         class Options
         {
             [Value(0, Required = true, HelpText = "The website to crawl.")]
             public string Url { get; set; }
+
+            [Value(1, Required = true, HelpText = "What condition the url must satisfy to be written down as valid")]
+            public ValidationModes ValidationMode { get; set; }
 
             [Option('i', HelpText = "Whether or not to retry invalid entries.")]
             public bool RetryInvalid { get; set; }
@@ -144,7 +153,7 @@ namespace IteratingCrawler
                 }
             }
 
-            for (int i = options.Start; i != options.End; i += (i < options.End) ? 1 : -1)
+            for (int i = options.Start; i != options.End; i += options.End.CompareTo(i))
             {
                 if (!fileList.ContainsKey(i) || (Uri.TryCreate(fileList[i], UriKind.Absolute, out Uri entry) ? options.RetryValid : options.RetryInvalid))
                 {
@@ -153,10 +162,18 @@ namespace IteratingCrawler
                     using (PoliteWebCrawler crawler = new PoliteWebCrawler(crawlConfig, null, null, null, null, null, null, null, new NobotDotTxtIgnorer()))
                         rawResult = crawler.Crawl(uri);
 
-                    string processedResult =
-                        ((!rawResult.ErrorOccurred && rawResult.CrawlContext.RootUri.AbsoluteUri != uri.AbsoluteUri)
-                        ? rawResult.CrawlContext.RootUri.AbsoluteUri
-                        : "invalid file");
+                    string processedResult = "invalid file";
+                    switch (options.ValidationMode)
+                    {
+                        case (ValidationModes.Redirect):
+                            if (!rawResult.ErrorOccurred && rawResult.CrawlContext.RootUri.AbsoluteUri != uri.AbsoluteUri)
+                                processedResult = rawResult.CrawlContext.RootUri.AbsoluteUri;
+                            break;
+                        case (ValidationModes.Valid):
+                            if (!rawResult.ErrorOccurred)
+                                processedResult = rawResult.CrawlContext.RootUri.AbsoluteUri;
+                            break;
+                    }
 
                     //HACK
                     if (!fileList.ContainsKey(i) || fileList[i] != processedResult)
